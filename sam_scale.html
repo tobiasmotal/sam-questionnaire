@@ -114,6 +114,24 @@
       audio.play();
     }
 
+    function saveResult(scale="1") {
+      let value;
+      if (scale == "1") {
+        value = `${responses.scale1.valence||""},${responses.scale1.arousal||""},${responses.scale1.dominance||""}`;
+      } else {
+        value = `${responses.scale2.valence||""},${responses.scale2.arousal||""},${responses.scale2.dominance||""}`;
+      }
+      fetch("https://script.google.com/macros/s/AKfycbwRAvpQPvCsrc-v6P2_WL20LYxHVaznnqTffMHs2W-0Y8fUXXqZdxNe9bfjpAezfLeUoQ/exec", {
+        method: "POST",
+        body: JSON.stringify({ scale: scale, value: value }),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(response => response.json())
+      .then(data => console.log("Saved:", data))
+      .catch(error => console.error("Error:", error));
+    }
+
+
     function renderScales(screenId, prefix="1") {
       ["valence","arousal","dominance"].forEach(scale => {
         const container = document.getElementById(scale + prefix);
@@ -135,6 +153,7 @@
         responses.scale1[scale] = img.dataset.value;
         if (Object.keys(responses.scale1).length === 3) {
           firstScaleAnswered = true;
+          saveResult("1");
           // if second scale is ready, show it; otherwise show idle screen
           if (secondScaleReady) {
             document.getElementById("sam-screen1").classList.add("hidden");
@@ -151,7 +170,8 @@
         responses.scale2[scale] = img.dataset.value;
         // if all 3 are answered, save CSV
         if (Object.keys(responses.scale2).length === 3) {
-          saveCSV();
+          //saveCSV();
+          saveResult("2");
           document.getElementById("sam-screen2").classList.add("hidden");
           document.body.innerHTML = "<h1>Vielen Dank für Ihre Teilnahme!</h1><h2>Thank you for your participation!</h2>";
         }
