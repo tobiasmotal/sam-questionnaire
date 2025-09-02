@@ -141,6 +141,7 @@
         responses.scale1[scale] = img.dataset.value;
         if (Object.keys(responses.scale1).length === 3) {
           firstScaleAnswered = true;
+          responses.scale1.completedAt = new Date().toISOString();
           // if second scale is ready, show it; otherwise show idle screen
           if (secondScaleReady) {
             document.getElementById("sam-screen1").classList.add("hidden");
@@ -158,6 +159,7 @@
         // if all 3 are answered, save CSV
         if (Object.keys(responses.scale2).length === 3) {
           //saveCSV();
+          responses.scale2.completedAt = new Date().toISOString();
           document.getElementById("sam-screen2").classList.add("hidden");
           document.getElementById("end_screen").classList.remove("hidden");
         }
@@ -165,9 +167,9 @@
     }
 
     function saveCSV() {
-      let csv = "Scale,Valence,Arousal,Dominance\n";
-      csv += `scale1,${responses.scale1.valence||""},${responses.scale1.arousal||""},${responses.scale1.dominance||""}\n`;
-      csv += `scale2,${responses.scale2.valence||""},${responses.scale2.arousal||""},${responses.scale2.dominance||""}\n`;
+      let csv = "Scale, Timestamp, Valence, Arousal, Dominance\n";
+      csv += `scale1, ${responses.scale1.completedAt||""}, ${responses.scale1.valence||""}, ${responses.scale1.arousal||""}, ${responses.scale1.dominance||""}\n`;
+      csv += `scale2, ${responses.scale2.completedAt||""}, ${responses.scale2.valence||""}, ${responses.scale2.arousal||""}, ${responses.scale2.dominance||""}\n`;
 
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
