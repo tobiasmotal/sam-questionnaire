@@ -70,12 +70,17 @@
     <div id="arousal2" class="scale-box"></div>
     <div id="dominance2" class="scale-box"></div>
   </div>
+
+  <div id="end_screen" class="hidden">
+    <h1>Vielen Dank für Ihre Teilnahme!</h1>
+    <h2>Thank you for your participation!</h2>
+    <button onclick="saveCSV()">Download Results</button>
+  </div>
   <!-- notification sound -->
   <audio id="notifySound" src="sounds/buzzer.wav" preload="auto"></audio>
 
   <script>
     const SAM_OPTIONS = 5; // number of choices per scale
-    const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdw45d4GxOq-bJhvmc9cPzbYTQA8UjNWjFUMmVdf_pwvEoVig/formResponse"; // Google Form URL
     let responses = { scale1: {}, scale2: {} }; // to store responses
     let secondScaleReady = false; // to track if second scale is ready
     let firstScaleAnswered = false; // to track if first scale is answered
@@ -115,26 +120,6 @@
       audio.play();
     }
 
-    function submitToGoogleForm(scale1, scale2) {
-      const data = new FormData();
-      data.append("entry.1066774737", scale1.valence);
-      data.append("entry.987677084", scale1.arousal);
-      data.append("entry.1862439246", scale1.dominance);
-      data.append("entry.803124653", scale2.valence);
-      data.append("entry.1163494082", scale2.arousal);
-      data.append("entry.1922090287", scale2.dominance);
-
-      fetch(GOOGLE_FORM_URL, {
-        method: "POST",
-        body: data,
-        mode: "no-cors" // prevents CORS errors
-        }).then(() => {
-          console.log("Responses submitted to Google Form.");
-          alert("Thank you! Your responses have been saved.");
-        }).catch(err => console.error("Error submitting:", err));
-    }
-
-
     function renderScales(screenId, prefix="1") {
       ["valence","arousal","dominance"].forEach(scale => {
         const container = document.getElementById(scale + prefix);
@@ -173,9 +158,8 @@
         // if all 3 are answered, save CSV
         if (Object.keys(responses.scale2).length === 3) {
           //saveCSV();
-          submitToGoogleForm(responses.scale1, responses.scale2);
           document.getElementById("sam-screen2").classList.add("hidden");
-          document.body.innerHTML = "<h1>Vielen Dank für Ihre Teilnahme!</h1><h2>Thank you for your participation!</h2>";
+          document.getElementById("end_screen").classList.remove("hidden");
         }
       }
     }
