@@ -72,9 +72,9 @@
   </div>
   <!-- notification sound -->
   <audio id="notifySound" src="sounds/buzzer.wav" preload="auto"></audio>
-  <script src="coi-serviceworker.js"></script>
+  
 
-  <script>
+  <script src="coi-serviceworker.js">
     const SAM_OPTIONS = 5; // number of choices per scale
     let responses = { scale1: {}, scale2: {} }; // to store responses
     let secondScaleReady = false; // to track if second scale is ready
