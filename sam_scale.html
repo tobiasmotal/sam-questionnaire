@@ -121,7 +121,7 @@
       } else {
         value = `${responses.scale2.valence||""},${responses.scale2.arousal||""},${responses.scale2.dominance||""}`;
       }
-      fetch("https://script.google.com/macros/s/AKfycbzlYv6b4F6W-DnVA-IwRdnv-5180c8xxaSqyBc6iTbX_AMuigvhg2EaiwDeemrz-fNdng/exec", {
+      fetch("https://script.google.com/macros/s/AKfycbwmGr-43R9cFgxI1-8sk2PaBIXN6YRCzHkmNQ9Qv6eCOPDseYOtYg-ndCrTXYoFvByZaA/exec", {
         method: "POST",
         body: JSON.stringify({ scale: scale, value: value }),
         headers: { "Content-Type": "application/json" }
