@@ -43,10 +43,10 @@
 
   <!-- Launch Screen -->
   <div id="launch-screen">
-    <h1>Experiment HMI</h1>
-    <p>Bitte drücken Sie "Start Scenario" am Anfang des Experiments.</p>
-    <p>Please press the button "Start Scenario" at the beginning of the Experiment.</p>
-    <button onclick="startScenario()">Start Scenario</button>
+    <h1>Bus Emulator HMI</h1>
+    <p>Bitte drücken Sie "Start" am Anfang der Fahrt.</p>
+    <p>Please press the button "Start" at the beginning of the Ride.</p>
+    <button onclick="startScenario()">Start</button>
   </div>
 
   <div id="idle-screen" class="hidden">
@@ -88,7 +88,7 @@
     function startScenario() {
       document.getElementById("launch-screen").classList.add("hidden");
        // Show blank waiting screen (scenario phase)
-      document.body.innerHTML += "<h2 id='waiting_ger'>Experiment läuft. Bitte warten Sie...</h2><h2 id='waiting_eng'>Experiment in progress. Please wait...</h2>";
+      document.body.innerHTML += "<h2 id='waiting_ger'>Die Fahrt läuft. Bitte warten Sie...</h2><h2 id='waiting_eng'>Ride started. Please wait...</h2>";
 
       // render scales
       renderScales("sam-screen1","1");
@@ -166,8 +166,8 @@
 
     function saveCSV() {
       let csv = "Scale,Valence,Arousal,Dominance\n";
-      csv += `1:${responses.scale1.valence||""},${responses.scale1.arousal||""},${responses.scale1.dominance||""}\n`;
-      csv += `2:${responses.scale2.valence||""},${responses.scale2.arousal||""},${responses.scale2.dominance||""}\n`;
+      csv += `scale1,${responses.scale1.valence||""},${responses.scale1.arousal||""},${responses.scale1.dominance||""}\n`;
+      csv += `scale2,${responses.scale2.valence||""},${responses.scale2.arousal||""},${responses.scale2.dominance||""}\n`;
 
       const blob = new Blob([csv], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
