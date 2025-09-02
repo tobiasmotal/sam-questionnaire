@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SAM Questionnaire</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: darkkhaki;
+    }
+    .hidden {
+      display: none;
+    }
+    .scale-box {
+      border: 2px solid #444;   /* dark border */
+      border-radius: 12px;      /* rounded corners */
+      padding: 15px;            /* spacing inside the box */
+      margin: 20px 0;           /* spacing between boxes */
+      text-align: center;       /* center images */
+      background-color: #fafafa; /* light background */
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* subtle shadow */
+    }
+
+    .scale-box img {
+      width: 80px;
+      border: 3px solid transparent;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    .scale-box img.selected {
+      border-color: blue;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Launch Screen -->
+  <div id="launch-screen">
+    <h1>Experiment HMI</h1>
+    <p>Bitte drücken Sie "Start Scenario" am Anfang des Experiments.</p>
+    <p>Please press the button "Start Scenario" at the beginning of the Experiment.</p>
+    <button onclick="startScenario()">Start Scenario</button>
+  </div>
+
+  <div id="idle-screen" class="hidden">
+    <h1>Vielen Dank! Bitte achten Sie wieder auf die Fahrt.</h1>
+    <h2>Thank you! Please shift your attention back to the ride.</h2>
+  </div>
+
+  <!-- SAM Screen -->
+  <div id="sam-screen1" class="hidden">
+    <h1>Bitte bewerten Sie Ihre Erfahrung. Wählen Sie dafür ein Bild pro Reihe.</h1>
+    <h2>Please rate your experience. For that, choose one picture per line.</h2>
+    <div class="scale-box" id="valence1"></div>
+    <div class="scale-box" id="arousal1"></div>
+    <div class="scale-box" id="dominance1"></div>
+  </div>
+
+  <div id="sam-screen2" class="hidden">
+    <h1>Bitte bewerten Sie Ihre Erfahrung. Wählen Sie dafür ein Bild pro Reihe.</h1>
+    <h2>Please rate your experience. For that, choose one picture per line.</h2>
+    <div id="valence2" class="scale-box"></div>
+    <div id="arousal2" class="scale-box"></div>
+    <div id="dominance2" class="scale-box"></div>
+  </div>
+  <!-- notification sound -->
+  <audio id="notifySound" src="sounds/buzzer.wav" preload="auto"></audio>
+
+  <script>
+    const SAM_OPTIONS = 5; // number of choices per scale
+    let responses = { scale1: {}, scale2: {} }; // to store responses
+    let secondScaleReady = false; // to track if second scale is ready
+    let firstScaleAnswered = false; // to track if first scale is answered
+    
+    function startScenario() {
+      document.getElementById("launch-screen").classList.add("hidden");
+       // Show blank waiting screen (scenario phase)
+      document.body.innerHTML += "<h2 id='waiting_ger'>Experiment läuft. Bitte warten Sie...</h2><h2 id='waiting_eng'>Experiment in progress. Please wait...</h2>";
+
+      // render scales
+      renderScales("sam-screen1","1");
+      renderScales("sam-screen2","2");
+
+      // Timer 1: after 210s show screen 1
+      setTimeout(() => {
+        document.getElementById("waiting_ger").remove();
+        document.getElementById("waiting_eng").remove();
+        document.getElementById("sam-screen1").classList.remove("hidden");
+        playNotify();
+      }, 2100);
+
+      // Timer 2: after 300s show screen 2
+      setTimeout(() => {
+        secondScaleReady = true;
+        if (firstScaleAnswered) {
+          document.getElementById("sam-screen1").classList.add("hidden");
+          document.getElementById("idle-screen").classList.add("hidden");
+          document.getElementById("sam-screen2").classList.remove("hidden");
+          playNotify();
+        }
+      }, 30000);
+    }
+
+    function playNotify() {
+      const audio = document.getElementById("notifySound");
+      audio.currentTime = 0;  // restart from beginning
+      audio.play();
+    }
+
+    function renderScales(screenId, prefix="1") {
+      ["valence","arousal","dominance"].forEach(scale => {
+        const container = document.getElementById(scale + prefix);
+        for (let i=1; i<=SAM_OPTIONS; i++) {
+          let img = document.createElement("img");
+          img.src = "images/" + scale + "_" + i + ".png"; // Loads images like valence_1.png, arousal_3.png, etc.
+          img.dataset.value = i;
+          img.onclick = () => selectOption(prefix, scale, img);
+          container.appendChild(img);
+        }
+      });
+    }
+
+    function selectOption(prefix, scale, img) {
+      const siblings = img.parentNode.querySelectorAll("img");
+      siblings.forEach(sib => sib.classList.remove("selected"));
+      img.classList.add("selected");
+      if (prefix === "1") {
+        responses.scale1[scale] = img.dataset.value;
+        if (Object.keys(responses.scale1).length === 3) {
+          firstScaleAnswered = true;
+          // if second scale is ready, show it; otherwise show idle screen
+          if (secondScaleReady) {
+            document.getElementById("sam-screen1").classList.add("hidden");
+            document.getElementById("sam-screen2").classList.remove("hidden");
+            playNotify();
+          }
+          else {
+            document.getElementById("sam-screen1").classList.add("hidden");
+            document.getElementById("idle-screen").classList.remove("hidden");
+          }
+        }
+      }
+      if (prefix === "2") {
+        responses.scale2[scale] = img.dataset.value;
+        // if all 3 are answered, save CSV
+        if (Object.keys(responses.scale2).length === 3) {
+          saveCSV();
+          document.getElementById("sam-screen2").classList.add("hidden");
+          document.body.innerHTML = "<h1>Vielen Dank für Ihre Teilnahme!</h1><h2>Thank you for your participation!</h2>";
+        }
+      }
+    }
+
+    function saveCSV() {
+      let csv = "Scale,Valence,Arousal,Dominance\n";
+      csv += `1:${responses.scale1.valence||""},${responses.scale1.arousal||""},${responses.scale1.dominance||""}\n`;
+      csv += `2:${responses.scale2.valence||""},${responses.scale2.arousal||""},${responses.scale2.dominance||""}\n`;
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "results.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
