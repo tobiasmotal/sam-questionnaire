@@ -72,10 +72,10 @@
   </div>
   <!-- notification sound -->
   <audio id="notifySound" src="sounds/buzzer.wav" preload="auto"></audio>
-  
 
-  <script src="coi-serviceworker.js">
+  <script>
     const SAM_OPTIONS = 5; // number of choices per scale
+    const GOOGLE_FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSdw45d4GxOq-bJhvmc9cPzbYTQA8UjNWjFUMmVdf_pwvEoVig/formResponse"; // Google Form URL
     let responses = { scale1: {}, scale2: {} }; // to store responses
     let secondScaleReady = false; // to track if second scale is ready
     let firstScaleAnswered = false; // to track if first scale is answered
@@ -115,21 +115,23 @@
       audio.play();
     }
 
-    function saveResult(scale="1") {
-      let value;
-      if (scale == "1") {
-        value = `${responses.scale1.valence||""},${responses.scale1.arousal||""},${responses.scale1.dominance||""}`;
-      } else {
-        value = `${responses.scale2.valence||""},${responses.scale2.arousal||""},${responses.scale2.dominance||""}`;
-      }
-      fetch("https://script.google.com/macros/s/AKfycbwmGr-43R9cFgxI1-8sk2PaBIXN6YRCzHkmNQ9Qv6eCOPDseYOtYg-ndCrTXYoFvByZaA/exec", {
+    function submitToGoogleForm(scale1, scale2) {
+      const data = new FormData();
+      data.append("entry.1066774737", scale1.valence);
+      data.append("entry.987677084", scale1.arousal);
+      data.append("entry.1862439246", scale1.dominance);
+      data.append("entry.803124653", scale2.valence);
+      data.append("entry.1163494082", scale2.arousal);
+      data.append("entry.1922090287", scale2.dominance);
+
+      fetch(GOOGLE_FORM_URL, {
         method: "POST",
-        body: JSON.stringify({ scale: scale, value: value }),
-        headers: { "Content-Type": "application/json" }
-      })
-      .then(response => response.json())
-      .then(data => console.log("Saved:", data))
-      .catch(error => console.error("Error:", error));
+        body: data,
+        mode: "no-cors" // prevents CORS errors
+        }).then(() => {
+          console.log("Responses submitted to Google Form.");
+          alert("Thank you! Your responses have been saved.");
+        }).catch(err => console.error("Error submitting:", err));
     }
 
 
@@ -154,7 +156,6 @@
         responses.scale1[scale] = img.dataset.value;
         if (Object.keys(responses.scale1).length === 3) {
           firstScaleAnswered = true;
-          saveResult("1");
           // if second scale is ready, show it; otherwise show idle screen
           if (secondScaleReady) {
             document.getElementById("sam-screen1").classList.add("hidden");
@@ -172,7 +173,7 @@
         // if all 3 are answered, save CSV
         if (Object.keys(responses.scale2).length === 3) {
           //saveCSV();
-          saveResult("2");
+          submitToGoogleForm(responses.scale1, responses.scale2);
           document.getElementById("sam-screen2").classList.add("hidden");
           document.body.innerHTML = "<h1>Vielen Dank für Ihre Teilnahme!</h1><h2>Thank you for your participation!</h2>";
         }
