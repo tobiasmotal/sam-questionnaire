@@ -42,20 +42,20 @@
 <body>
 
   <!-- Launch Screen -->
-  <div id="launch-screen">
+  <div id="launch-screen" class="screen">
     <h1>Bus Emulator HMI</h1>
     <p>Bitte drücken Sie "Start" am Anfang der Fahrt.</p>
     <p>Please press the button "Start" at the beginning of the Ride.</p>
     <button onclick="startScenario()">Start</button>
   </div>
 
-  <div id="idle-screen" class="hidden">
+  <div id="idle-screen" class="screen hidden">
     <h1>Vielen Dank! Bitte achten Sie wieder auf die Fahrt.</h1>
     <h2>Thank you! Please shift your attention back to the ride.</h2>
   </div>
 
   <!-- SAM Screen -->
-  <div id="sam-screen1" class="hidden">
+  <div id="sam-screen1" class="screen hidden">
     <h1>Bitte bewerten Sie Ihre Erfahrung. Wählen Sie dafür ein Bild pro Reihe.</h1>
     <h2>Please rate your experience. For that, choose one picture per line.</h2>
     <div class="scale-box" id="valence1"></div>
@@ -63,70 +63,150 @@
     <div class="scale-box" id="dominance1"></div>
   </div>
 
-  <div id="sam-screen2" class="hidden">
+  <div id="sam-screen2" class="screen hidden">
     <h1>Bitte bewerten Sie Ihre Erfahrung. Wählen Sie dafür ein Bild pro Reihe.</h1>
     <h2>Please rate your experience. For that, choose one picture per line.</h2>
     <div id="valence2" class="scale-box"></div>
     <div id="arousal2" class="scale-box"></div>
     <div id="dominance2" class="scale-box"></div>
   </div>
+  
+  <div id="waiting-screen" class="screen hidden">
+    <h1>Die Fahrt läuft. Bitte warten Sie...</h1>
+    <h2>Ride started. Please wait...</h2>
+  </div>
 
-  <div id="end_screen" class="hidden">
+  <!-- End Screen -->
+  <div id="end_screen" class="screen hidden">
     <h1>Vielen Dank für Ihre Teilnahme!</h1>
     <h2>Thank you for your participation!</h2>
     <button onclick="saveCSV()">Download Results</button>
+    <button onclick="restartScenario()">Restart</button>
   </div>
   <!-- notification sound -->
   <audio id="notifySound" src="sounds/buzzer.wav" preload="auto"></audio>
 
+  <!-- JavaScript to handle logic -->
   <script>
-    const SAM_OPTIONS = 5; // number of choices per scale
-    let responses = { scale1: {}, scale2: {} }; // to store responses
-    let secondScaleReady = false; // to track if second scale is ready
-    let firstScaleAnswered = false; // to track if first scale is answered
-    
-    function startScenario() {
-      document.getElementById("launch-screen").classList.add("hidden");
-       // Show blank waiting screen (scenario phase)
-      document.body.innerHTML += "<h2 id='waiting_ger'>Die Fahrt läuft. Bitte warten Sie...</h2><h2 id='waiting_eng'>Ride started. Please wait...</h2>";
+    const SAM_OPTIONS = 5;
+    let responses = { scale1: {}, scale2: {} };
+    let secondScaleReady = false;
+    let firstScaleAnswered = false;
+    let downloadResults = false;
 
-      // render scales
+    // function to restore UI state from localStorage    
+    function restoreUI() {
+      ["scale1","scale2"].forEach((scale, i) => {
+        for (let dim in responses[scale]) {
+          if (dim === "completedAt") continue;
+          let value = responses[scale][dim];
+          let img = document.querySelector(
+            `#sam-screen${i+1} img[data-scale="${dim}"][data-value="${value}"]`
+          );
+          if (img) img.classList.add("selected");
+        }
+      });
+    }
+
+    // function to show a specific screen and hide others
+    function showScreen(id) {
+      document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
+      document.getElementById(id).classList.remove("hidden");
+      localStorage.setItem("currentScreen", id);
+    }
+
+    function scheduleEvents(startTime) {
+      const now = Date.now();
+      const elapsed = (now - startTime) / 1000;
+
+      const t1 = 285; // time for first scale
+      const t2 = 360; // time for second scale
+
+      if (elapsed >= t2) {
+        secondScaleReady = true;
+        if (firstScaleAnswered) {
+          showScreen("sam-screen2");
+        } else {
+          showScreen("sam-screen1");
+        }
+      } else if (elapsed >= t1) {
+        showScreen("sam-screen1");
+        setTimeout(() => {
+          secondScaleReady = true;
+          if (firstScaleAnswered) {
+            showScreen("sam-screen2");
+            playNotify();
+          }
+        }, (t2 - elapsed) * 1000);
+      } else {
+        showScreen("waiting-screen");
+        setTimeout(() => {
+          showScreen("sam-screen1");
+          playNotify();
+        }, (t1 - elapsed) * 1000);
+
+        setTimeout(() => {
+          secondScaleReady = true;
+          if (firstScaleAnswered) {
+            showScreen("sam-screen2");
+            playNotify();
+          }
+        }, (t2 - elapsed) * 1000);
+      }
+    } // scheduleEvents
+    window.addEventListener("DOMContentLoaded", () => {
+       // restore responses if present
+      const savedResponses = localStorage.getItem("responses");
+      if (savedResponses) {
+        responses = JSON.parse(savedResponses);
+      }
+
+      // restore scale completion flags
+      firstScaleAnswered = Boolean(responses.scale1.valence && responses.scale1.arousal && responses.scale1.dominance);
+
+      // rebuild scales always, but clear first to avoid duplicates
       renderScales("sam-screen1","1");
       renderScales("sam-screen2","2");
 
-      // Timer 1: after 210s show screen 1
-      setTimeout(() => {
-        document.getElementById("waiting_ger").remove();
-        document.getElementById("waiting_eng").remove();
-        document.getElementById("sam-screen1").classList.remove("hidden");
-        playNotify();
-      }, 2100);
+      // restore selected images
+      restoreUI();
 
-      // Timer 2: after 300s show screen 2
-      setTimeout(() => {
-        secondScaleReady = true;
-        if (firstScaleAnswered) {
-          document.getElementById("sam-screen1").classList.add("hidden");
-          document.getElementById("idle-screen").classList.add("hidden");
-          document.getElementById("sam-screen2").classList.remove("hidden");
-          playNotify();
-        }
-      }, 30000);
+      const startTime = localStorage.getItem("scenarioStart");
+      //const lastScreen = localStorage.getItem("currentScreen");
+
+      if (startTime) {
+        // Always call scheduleEvents to re-establish timeouts
+        scheduleEvents(parseInt(startTime));
+      } else {
+        showScreen("launch-screen");
+      }
+    });
+
+    function startScenario() {
+      const startTime = Date.now();
+      localStorage.setItem("scenarioStart", startTime);
+      showScreen("waiting-screen");
+      renderScales("sam-screen1","1");
+      renderScales("sam-screen2","2");
+      scheduleEvents(startTime);
     }
 
     function playNotify() {
       const audio = document.getElementById("notifySound");
-      audio.currentTime = 0;  // restart from beginning
+      audio.currentTime = 0;
       audio.play();
     }
 
+    // function to render scales (clear first to avoid duplicates)
     function renderScales(screenId, prefix="1") {
       ["valence","arousal","dominance"].forEach(scale => {
         const container = document.getElementById(scale + prefix);
+        container.innerHTML = ""; // clear previous images
         for (let i=1; i<=SAM_OPTIONS; i++) {
           let img = document.createElement("img");
-          img.src = "images/" + scale + "_" + i + ".png"; // Loads images like valence_1.png, arousal_3.png, etc.
+          img.src = "images/" + scale + "_" + i + ".png";
           img.dataset.value = i;
+          img.dataset.scale = scale;
           img.onclick = () => selectOption(prefix, scale, img);
           container.appendChild(img);
         }
@@ -137,31 +217,40 @@
       const siblings = img.parentNode.querySelectorAll("img");
       siblings.forEach(sib => sib.classList.remove("selected"));
       img.classList.add("selected");
+
       if (prefix === "1") {
         responses.scale1[scale] = img.dataset.value;
-        if (Object.keys(responses.scale1).length === 3) {
+        localStorage.setItem("responses", JSON.stringify(responses));
+
+        if (
+          responses.scale1.valence &&
+          responses.scale1.arousal &&
+          responses.scale1.dominance
+        ) {
           firstScaleAnswered = true;
           responses.scale1.completedAt = new Date().toISOString();
-          // if second scale is ready, show it; otherwise show idle screen
+          localStorage.setItem("responses", JSON.stringify(responses));
+
           if (secondScaleReady) {
-            document.getElementById("sam-screen1").classList.add("hidden");
-            document.getElementById("sam-screen2").classList.remove("hidden");
+            showScreen("sam-screen2");
             playNotify();
-          }
-          else {
-            document.getElementById("sam-screen1").classList.add("hidden");
-            document.getElementById("idle-screen").classList.remove("hidden");
+          } else {
+            showScreen("idle-screen");
           }
         }
       }
       if (prefix === "2") {
         responses.scale2[scale] = img.dataset.value;
-        // if all 3 are answered, save CSV
-        if (Object.keys(responses.scale2).length === 3) {
-          //saveCSV();
+        localStorage.setItem("responses", JSON.stringify(responses));
+
+        if (
+          responses.scale2.valence &&
+          responses.scale2.arousal &&
+          responses.scale2.dominance
+        ) {
           responses.scale2.completedAt = new Date().toISOString();
-          document.getElementById("sam-screen2").classList.add("hidden");
-          document.getElementById("end_screen").classList.remove("hidden");
+          localStorage.setItem("responses", JSON.stringify(responses));
+          showScreen("end_screen");
         }
       }
     }
@@ -178,7 +267,28 @@
       a.download = "results.csv";
       a.click();
       URL.revokeObjectURL(url);
+      downloadResults = true;
     }
+
+    function restartScenario() {
+      if (!downloadResults) {
+        alert("Please download the results before restarting.");
+        return;
+      }
+      else {
+        downloadResults = false; // reset for next round
+      }
+      localStorage.removeItem("responses");
+      localStorage.removeItem("currentScreen");
+      localStorage.removeItem("scenarioStart");
+      responses = { scale1: {}, scale2: {} };
+      secondScaleReady = false;
+      firstScaleAnswered = false;
+      renderScales("sam-screen1","1");
+      renderScales("sam-screen2","2");
+      showScreen("launch-screen");
+    }
+
   </script>
 </body>
 </html>
