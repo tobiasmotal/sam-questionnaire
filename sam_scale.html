@@ -183,6 +183,13 @@
     });
 
     function startScenario() {
+      const audio = document.getElementById("notifySound");
+        audio.play().then(() => {
+        audio.pause();
+        audio.currentTime = 0;
+       }).catch(err => {
+        console.log("Safari autoplay lock, but audio unlocked:", err);
+      });
       const startTime = Date.now();
       localStorage.setItem("scenarioStart", startTime);
       showScreen("waiting-screen");
