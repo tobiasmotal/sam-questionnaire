@@ -158,76 +158,81 @@
         }
       }
       else { // Scenarios with two scales
-      const t1 = 285; // time for first scale
-      const t2 = 360; // time for second scale
+        const t1 = 280; // time for first scale
+        const t2 = 355; // time for second scale
 
-      if (elapsed >= t2) {
-        secondScaleReady = true;
-        if (firstScaleAnswered) {
-          showScreen("sam-screen2");
-        } else {
+        if (elapsed >= t2) {
+          secondScaleReady = true;
+          if (firstScaleAnswered) {
+            showScreen("sam-screen2");
+          } else {
+            showScreen("sam-screen1");
+          }
+        } 
+        else if (elapsed >= t1) {
           showScreen("sam-screen1");
+          setTimeout(() => {
+            secondScaleReady = true;
+            if (firstScaleAnswered) {
+              showScreen("sam-screen2");
+              playNotify();
+            }
+          }, (t2 - elapsed) * 1000);
+        } 
+        else {
+          showScreen("waiting-screen");
+          setTimeout(() => {
+            showScreen("sam-screen1");
+            playNotify();
+          }, (t1 - elapsed) * 1000);
+
+          setTimeout(() => {
+            secondScaleReady = true;
+            if (firstScaleAnswered) {
+              showScreen("sam-screen2");
+              playNotify();
+            }
+          }, (t2 - elapsed) * 1000);
         }
-      } 
-      else if (elapsed >= t1) {
-        showScreen("sam-screen1");
-        setTimeout(() => {
-          secondScaleReady = true;
-          if (firstScaleAnswered) {
-            showScreen("sam-screen2");
-            playNotify();
-          }
-        }, (t2 - elapsed) * 1000);
-      } 
-      else {
-        showScreen("waiting-screen");
-        setTimeout(() => {
-          showScreen("sam-screen1");
-          playNotify();
-        }, (t1 - elapsed) * 1000);
-
-        setTimeout(() => {
-          secondScaleReady = true;
-          if (firstScaleAnswered) {
-            showScreen("sam-screen2");
-            playNotify();
-          }
-        }, (t2 - elapsed) * 1000);
-      }
-      }
-    } // scheduleEvents
+        }
+      } // scheduleEvents
     window.addEventListener("DOMContentLoaded", () => {
        // restore responses if present
-    const savedResponses = localStorage.getItem("responses");
-    updateButtonLabels();
-    if (scenario == 0) {
-      if (savedResponses) {
-        responses0 = JSON.parse(savedResponses);
+      const savedResponses = localStorage.getItem("responses");
+      scenario = parseInt(localStorage.getItem("scenario")) || 0;
+    
+      updateButtonLabels();
+      if (scenario == 0) {
+        if (savedResponses) {
+          responses0 = JSON.parse(savedResponses);
+        }
+        firstScaleAnswered = Boolean(responses0.scale1.valence && responses0.scale1.arousal && responses0.scale1.dominance);
+      } 
+      else {
+        if (savedResponses) {
+          responses = JSON.parse(savedResponses);
+        }
+        firstScaleAnswered = Boolean(responses.scale1.valence && responses.scale1.arousal && responses.scale1.dominance);
       }
-      firstScaleAnswered = Boolean(responses0.scale1.valence && responses0.scale1.arousal && responses0.scale1.dominance);
-    } 
-    else {
-      if (savedResponses) {
-        responses = JSON.parse(savedResponses);
-      }
-      firstScaleAnswered = Boolean(responses.scale1.valence && responses.scale1.arousal && responses.scale1.dominance);
-    }
-      // rebuild scales always, but clear first to avoid duplicates
-      renderScales("sam-screen1","1");
-      renderScales("sam-screen2","2");
+        // rebuild scales always, but clear first to avoid duplicates
+        renderScales("sam-screen1","1");
+        renderScales("sam-screen2","2");
 
-      // restore selected images
-      restoreUI();
+        // restore selected images
+        restoreUI();
 
-      const startTime = localStorage.getItem("scenarioStart");
-      //const lastScreen = localStorage.getItem("currentScreen");
+        const startTime = localStorage.getItem("scenarioStart");
+        const lastScreen = localStorage.getItem("currentScreen");
 
-      if (startTime) {
-        // Always call scheduleEvents to re-establish timeouts
-        scheduleEvents(parseInt(startTime));
-      } else {
-        showScreen("launch-screen");
-      }
+        if (startTime) {
+          // Always call scheduleEvents to re-establish timeouts
+          scheduleEvents(parseInt(startTime));
+          if(lastScreen && lastScreen !== "end_screen" && lastScreen !=="waiting-screen") {
+            showScreen(lastScreen);
+          }
+        } else {
+          showScreen("launch-screen");
+        }
     });
 
     // Start scenario function
@@ -304,6 +309,23 @@
           responses0.scale1.completedAt = new Date().toISOString();
           localStorage.setItem("responses", JSON.stringify(responses0));
           showScreen("idle-screen");
+          // Schedule transition to end_screen at t2
+          const startTime = parseInt(localStorage.getItem("scenarioStart"));
+          const now = Date.now();
+          const t2 = 180 * 1000; // ms
+          const elapsed = now - startTime;
+          const remaining = t2 - elapsed;
+          if (remaining > 0) {
+            setTimeout(() => {
+              showScreen("end_screen");
+              playNotify();
+            }, remaining);
+          }      
+          else {
+            // If t2 already passed, show end_screen immediately
+            showScreen("end_screen");
+            playNotify();
+          }
           return;
         }
       }
@@ -369,7 +391,7 @@
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = "results.csv";
+      a.download = "results_" + scenario + ".csv";
       a.click();
       URL.revokeObjectURL(url);
       downloadResults = true;
