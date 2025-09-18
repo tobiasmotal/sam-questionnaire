@@ -47,6 +47,7 @@
     <p>Bitte drücken Sie "Start" am Anfang der Fahrt.</p>
     <p>Please press the button "Start" at the beginning of the Ride.</p>
     <button id="start-btn" onclick="startScenario()">Start</button>
+    <button id="instructions-btn" onclick="showInstructions()">Instructions</button>
   </div>
 
   <div id="idle-screen" class="screen hidden">
@@ -69,6 +70,20 @@
     <div id="valence2" class="scale-box"></div>
     <div id="arousal2" class="scale-box"></div>
     <div id="dominance2" class="scale-box"></div>
+  </div>
+
+  <div id="instructions" class="screen hidden">
+    <h1>Instructions</h1>
+    <p>SAM-Skala misst momentane emotionale Zustände.
+      Wählen Sie für jede Dimension ein Bild aus, das Ihre aktuelle Erfahrung am besten beschreibt.
+      1. Valenz: Wie positiv oder negativ fühlen Sie sich? / How positive or negative do you feel?
+      2. Arousal: Wie erregt oder ruhig fühlen Sie sich? / How excited or calm do you feel?
+      3. Dominanz: Wie kontrolliert oder beherrscht fühlen Sie sich? / How controlled or in control do you feel?
+    </p>
+    <div id="valence3" class="scale-box"></div>
+    <div id="arousal3" class="scale-box"></div>
+    <div id="dominance3" class="scale-box"></div>
+    <button onclick="showScreen('launch-screen')">Back</button>
   </div>
   
   <div id="waiting-screen" class="screen hidden">
@@ -109,6 +124,14 @@
           if (img) img.classList.add("selected");
         }
       });
+    }
+
+    // function to show instructions
+    function showInstructions() {
+      if (scenario == 0) {
+        renderScales("instructions","3");
+        showScreen("instructions");
+      }
     }
 
     // function to show a specific screen and hide others
