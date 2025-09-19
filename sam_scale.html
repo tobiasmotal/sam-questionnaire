@@ -260,13 +260,7 @@
 
     // Start scenario function
     function startScenario() {
-      const audio = document.getElementById("notifySound");
-        audio.play().then(() => {
-        audio.pause();
-        audio.currentTime = 0;
-       }).catch(err => {
-        console.log("Safari autoplay lock, but audio unlocked:", err);
-      });
+      primeAudio()
       const startTime = Date.now();
       localStorage.setItem("scenarioStart", startTime);
       showScreen("waiting-screen");
@@ -283,8 +277,22 @@
     // function to play notification sound
     function playNotify() {
       const audio = document.getElementById("notifySound");
+      audio.pause();
       audio.currentTime = 0;
       audio.play();
+    }
+
+    // function for priming audio after interaction
+    function primeAudio() {
+      const audio = document.getElementById("notifySound");
+      audio.play().then(() => {
+      // immediately stop, but Safari now considers it unlocked
+      audio.pause();
+      audio.currentTime = 0;
+      console.log("Audio primed for Safari.");
+      }).catch(err => {
+        console.log("Priming failed:", err);
+      });
     }
     
     // function to update button labels based on scenario
@@ -362,6 +370,7 @@
           responses.scale1.arousal &&
           responses.scale1.dominance
         ) {
+          primeAudio() // Primes audio for second scale 
           firstScaleAnswered = true;
           responses.scale1.completedAt = new Date().toISOString();
           localStorage.setItem("responses", JSON.stringify(responses));
