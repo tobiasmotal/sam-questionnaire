@@ -265,6 +265,8 @@
       localStorage.setItem("scenarioStart", startTime);
       showScreen("waiting-screen");
       if (scenario == 0) {
+        localStorage.removeItem("responses");
+        responses0 = { scale1: {} };
         renderScales("sam-screen1","1");
       }
       else {
