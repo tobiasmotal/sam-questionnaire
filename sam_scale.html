@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SAM Questionnaire</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -10,17 +12,19 @@
       padding: 20px;
       background-color: darkkhaki;
     }
+
     .hidden {
       display: none;
     }
+
     .scale-box {
-      border: 2px solid #444;   /* dark border */
-      border-radius: 12px;      /* rounded corners */
-      padding: 15px;            /* spacing inside the box */
-      margin: 20px 0;           /* spacing between boxes */
-      text-align: center;       /* center images */
-      background-color: #fafafa; /* light background */
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1); /* subtle shadow */
+      border: 2px solid #444;
+      border-radius: 12px;
+      padding: 15px;
+      margin: 20px 0;
+      text-align: center;
+      background-color: #fafafa;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
 
     .scale-box img {
@@ -28,26 +32,31 @@
       border: 3px solid transparent;
       cursor: pointer;
       border-radius: 10px;
+      margin: 2px;
     }
+
     .scale-box img.selected {
       border-color: blue;
     }
+
     button {
       padding: 10px 20px;
       font-size: 18px;
       margin-top: 20px;
+      margin-left: 5px;
+      margin-right: 5px;
     }
   </style>
 </head>
-<body>
 
+<body>
   <!-- Launch Screen -->
   <div id="launch-screen" class="screen">
     <h1>Bus Emulator HMI</h1>
     <p>Bitte drücken Sie "Start" am Anfang der Fahrt.</p>
-    <p>Please press the button "Start" at the beginning of the Ride.</p>
-    <button id="start-btn" onclick="startScenario()">Start</button>
-    <button id="instructions-btn" onclick="showInstructions()">Instructions</button>
+    <p>Please press the button "Start" at the beginning of the ride.</p>
+    <button id="start-btn" type="button" onclick="startScenario()">Start</button>
+    <button id="instructions-btn" type="button" onclick="showInstructions()">Instructions</button>
   </div>
 
   <div id="idle-screen" class="screen hidden">
@@ -55,7 +64,7 @@
     <h2>Thank you! Please shift your attention back to the ride.</h2>
   </div>
 
-  <!-- SAM Screen -->
+  <!-- SAM Screen 1 -->
   <div id="sam-screen1" class="screen hidden">
     <h1>Bitte bewerten Sie Ihre Erfahrung. Wählen Sie dafür ein Bild pro Reihe.</h1>
     <h2>Please rate your experience. For that, choose one picture per line.</h2>
@@ -64,28 +73,31 @@
     <div class="scale-box" id="dominance1"></div>
   </div>
 
+  <!-- SAM Screen 2 -->
   <div id="sam-screen2" class="screen hidden">
     <h1>Bitte bewerten Sie Ihre Erfahrung. Wählen Sie dafür ein Bild pro Reihe.</h1>
     <h2>Please rate your experience. For that, choose one picture per line.</h2>
-    <div id="valence2" class="scale-box"></div>
-    <div id="arousal2" class="scale-box"></div>
-    <div id="dominance2" class="scale-box"></div>
+    <div class="scale-box" id="valence2"></div>
+    <div class="scale-box" id="arousal2"></div>
+    <div class="scale-box" id="dominance2"></div>
   </div>
 
+  <!-- Instructions -->
   <div id="instructions" class="screen hidden">
     <h1>Instructions</h1>
-    <p>SAM-Skala misst momentane <b>emotionale Zustände.</b>
+    <p>
+      SAM-Skala misst momentane <b>emotionale Zustände.</b><br>
       Wählen Sie für jede Dimension ein Bild aus, das Ihre aktuelle Erfahrung am besten beschreibt.<br>
-      <b>1. Valenz:</b> Wie positiv oder negativ fühlen Sie sich? / How positive or negative do you feel? <br>
-      <b>2. Arousal:</b> Wie erregt oder ruhig fühlen Sie sich? / How excited or calm do you feel? <br>
+      <b>1. Valenz:</b> Wie positiv oder negativ fühlen Sie sich? / How positive or negative do you feel?<br>
+      <b>2. Arousal:</b> Wie erregt oder ruhig fühlen Sie sich? / How excited or calm do you feel?<br>
       <b>3. Dominanz:</b> Wie kontrolliert oder beherrscht fühlen Sie sich? / How controlled or in control do you feel?
     </p>
     <div id="valence3" class="scale-box"></div>
     <div id="arousal3" class="scale-box"></div>
     <div id="dominance3" class="scale-box"></div>
-    <button onclick="showScreen('launch-screen')">Back</button>
+    <button type="button" onclick="showScreen('launch-screen')">Back</button>
   </div>
-  
+
   <div id="waiting-screen" class="screen hidden">
     <h1>Die Fahrt läuft. Bitte warten Sie...</h1>
     <h2>Ride started. Please wait...</h2>
@@ -95,342 +107,414 @@
   <div id="end_screen" class="screen hidden">
     <h1>Vielen Dank für Ihre Teilnahme!</h1>
     <h2>Thank you for your participation!</h2>
-    <button onclick="saveCSV()">Download Results</button>
-    <button onclick="restartScenario()">Restart</button>
+    <button type="button" onclick="saveCSV()">Download Results</button>
+    <button type="button" onclick="restartScenario()">Restart</button>
   </div>
-  <!-- notification sound -->
+
+  <!-- Notification sound -->
   <audio id="notifySound" src="sounds/buzzer.wav" preload="auto"></audio>
 
-  <!-- JavaScript to handle logic -->
   <script>
+    "use strict";
+
     const SAM_OPTIONS = 5;
+    const DIMENSIONS = ["valence", "arousal", "dominance"];
+
+    // Scenario 0 = baseline, scenarios 1-3 = riding scenarios.
+    // Times are in seconds after pressing Start.
+    const SCENARIOS = [
+      {
+        id: 0,
+        label: "Baseline",
+        type: "baseline",
+        firstScaleTime: 90,
+        endTime: 180
+      },
+      {
+        id: 1,
+        label: "Scenario 1",
+        type: "ride",
+        firstScaleTime: 280,
+        secondScaleTime: 355
+      },
+      {
+        id: 2,
+        label: "Scenario 2",
+        type: "ride",
+        firstScaleTime: 280,
+        secondScaleTime: 355
+      },
+      {
+        id: 3,
+        label: "Scenario 3",
+        type: "ride",
+        firstScaleTime: 280,
+        secondScaleTime: 355
+      }
+    ];
+
+    const STORAGE = {
+      scenario: "scenario",
+      startTime: "scenarioStart",
+      responses: "responses",
+      downloaded: "downloadResults"
+    };
+
     let scenario = 0;
-    let responses = { scale1: {}, scale2: {} };
-    let responses0 = { scale1: {} }; // for scenario 0
-
-    let secondScaleReady = false;
-    let firstScaleAnswered = false;
+    let responses = emptyResponses(0);
     let downloadResults = false;
+    let timerIds = [];
 
-    // function to restore UI state from localStorage    
-    function restoreUI() {
-      ["scale1","scale2"].forEach((scale, i) => {
-        for (let dim in responses[scale]) {
-          if (dim === "completedAt") continue;
-          let value = responses[scale][dim];
-          let img = document.querySelector(
-            `#sam-screen${i+1} img[data-scale="${dim}"][data-value="${value}"]`
-          );
-          if (img) img.classList.add("selected");
-        }
-      });
-    }
-
-    // function to show instructions
-    function showInstructions() {
-      if (scenario == 0) {
-        renderScales("instructions","3");
-        showScreen("instructions");
+    function emptyResponses(scenarioId) {
+      if (SCENARIOS[scenarioId].type === "baseline") {
+        return { scale1: {} };
       }
+      return { scale1: {}, scale2: {} };
     }
 
-    // function to show a specific screen and hide others
+    function getScenarioConfig() {
+      return SCENARIOS[scenario];
+    }
+
+    function isScaleComplete(scaleName) {
+      const scale = responses[scaleName];
+      return Boolean(
+        scale &&
+        scale.valence &&
+        scale.arousal &&
+        scale.dominance
+      );
+    }
+
+    function clearTimers() {
+      timerIds.forEach(id => clearTimeout(id));
+      timerIds = [];
+    }
+
+    function scheduleAt(startTime, eventTimeSeconds, callback) {
+      const remaining = startTime + eventTimeSeconds * 1000 - Date.now();
+
+      if (remaining <= 0) {
+        return;
+      }
+
+      const timerId = setTimeout(callback, remaining);
+      timerIds.push(timerId);
+    }
+
     function showScreen(id) {
-      document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
-      document.getElementById(id).classList.remove("hidden");
-      localStorage.setItem("currentScreen", id);
+      const target = document.getElementById(id);
+      if (!target) {
+        console.error(`Unknown screen: ${id}`);
+        return false;
+      }
+
+      const alreadyVisible = !target.classList.contains("hidden");
+      document.querySelectorAll(".screen").forEach(screen => screen.classList.add("hidden"));
+      target.classList.remove("hidden");
+      return !alreadyVisible;
     }
 
-    function scheduleEvents(startTime) {
-      const now = Date.now();
-      const elapsed = (now - startTime) / 1000;
-
-      if (scenario == 0) { //Baseline scenario with only one scale
-        const t1 = 90;  // time for first scale
-        const t2 = 180; // total scenario time
-        if (elapsed >= t2) {
-          if (firstScaleAnswered) {
-          showScreen("end_screen");
-        } 
-          else {
-            showScreen("sam-screen1");
-          }
-        } 
-        else if (elapsed >= t1) {
-          showScreen("sam-screen1");
-          setTimeout(() => {
-          if (firstScaleAnswered) {
-            showScreen("end_screen");
-            playNotify();
-          }
-          }, (t2 - elapsed) * 1000);
-        } 
-        else {
-          showScreen("waiting-screen");
-          setTimeout(() => {
-          showScreen("sam-screen1");
-          playNotify();
-        }, (t1 - elapsed) * 1000);
-
-        setTimeout(() => {
-          if (firstScaleAnswered) {
-            showScreen("end_screen");
-            playNotify();
-          }
-        }, (t2 - elapsed) * 1000);
-        }
-      }
-      else { // Scenarios with two scales
-        const t1 = 280; // time for first scale
-        const t2 = 355; // time for second scale
-
-        if (elapsed >= t2) {
-          secondScaleReady = true;
-          if (firstScaleAnswered) {
-            showScreen("sam-screen2");
-          } else {
-            showScreen("sam-screen1");
-          }
-        } 
-        else if (elapsed >= t1) {
-          showScreen("sam-screen1");
-          setTimeout(() => {
-            secondScaleReady = true;
-            if (firstScaleAnswered) {
-              showScreen("sam-screen2");
-              playNotify();
-            }
-          }, (t2 - elapsed) * 1000);
-        } 
-        else {
-          showScreen("waiting-screen");
-          setTimeout(() => {
-            showScreen("sam-screen1");
-            playNotify();
-          }, (t1 - elapsed) * 1000);
-
-          setTimeout(() => {
-            secondScaleReady = true;
-            if (firstScaleAnswered) {
-              showScreen("sam-screen2");
-              playNotify();
-            }
-          }, (t2 - elapsed) * 1000);
-        }
-        }
-      } // scheduleEvents
-    window.addEventListener("DOMContentLoaded", () => {
-       // restore responses if present
-      const savedResponses = localStorage.getItem("responses");
-      scenario = parseInt(localStorage.getItem("scenario")) || 0;
-    
-      updateButtonLabels();
-      if (scenario == 0) {
-        if (savedResponses) {
-          responses0 = JSON.parse(savedResponses);
-        }
-        firstScaleAnswered = Boolean(responses0.scale1.valence && responses0.scale1.arousal && responses0.scale1.dominance);
-      } 
-      else {
-        if (savedResponses) {
-          responses = JSON.parse(savedResponses);
-        }
-        firstScaleAnswered = Boolean(responses.scale1.valence && responses.scale1.arousal && responses.scale1.dominance);
-      }
-        // rebuild scales always, but clear first to avoid duplicates
-        renderScales("sam-screen1","1");
-        renderScales("sam-screen2","2");
-
-        // restore selected images
-        restoreUI();
-
-        const startTime = localStorage.getItem("scenarioStart");
-        const lastScreen = localStorage.getItem("currentScreen");
-
-        if (startTime) {
-          // Always call scheduleEvents to re-establish timeouts
-          scheduleEvents(parseInt(startTime));
-          if(lastScreen && lastScreen !== "end_screen" && lastScreen !=="waiting-screen") {
-            showScreen(lastScreen);
-          }
-        } else {
-          showScreen("launch-screen");
-        }
-    });
-
-    // Start scenario function
-    function startScenario() {
-      primeAudio()
-      const startTime = Date.now();
-      localStorage.setItem("scenarioStart", startTime);
-      showScreen("waiting-screen");
-      if (scenario == 0) {
-        localStorage.removeItem("responses");
-        responses0 = { scale1: {} };
-        renderScales("sam-screen1","1");
-      }
-      else {
-        renderScales("sam-screen1","1");
-        renderScales("sam-screen2","2");
-      }
-      scheduleEvents(startTime);
+    function showInstructions() {
+      // Keep instructions available from the launch screen for every scenario.
+      renderScales("3");
+      showScreen("instructions");
     }
 
-    // function to play notification sound
-    function playNotify() {
-      const audio = document.getElementById("notifySound");
-      audio.pause();
-      audio.currentTime = 0;
-      audio.play();
-    }
+    function renderScales(prefix) {
+      DIMENSIONS.forEach(dimension => {
+        const container = document.getElementById(dimension + prefix);
+        if (!container) {
+          console.error(`Missing scale container: ${dimension}${prefix}`);
+          return;
+        }
 
-    // function for priming audio after interaction
-    function primeAudio() {
-      const audio = document.getElementById("notifySound");
-      audio.play().then(() => {
-      // immediately stop, but Safari now considers it unlocked
-      audio.pause();
-      audio.currentTime = 0;
-      console.log("Audio primed for Safari.");
-      }).catch(err => {
-        console.log("Priming failed:", err);
-      });
-    }
-    
-    // function to update button labels based on scenario
-    function updateButtonLabels() {
-      const startBtn = document.getElementById("start-btn");
-      if (scenario == 0) {
-        startBtn.textContent = "Start Baseline";
-      } else if (scenario == 1) {
-        startBtn.textContent = "Start Scenario 1";
-      } else if (scenario == 2) {
-        startBtn.textContent = "Start Scenario 2";
-      } else if (scenario == 3) {
-        startBtn.textContent = "Start Scenario 3";
-      }
-    }
+        container.innerHTML = "";
 
-
-    // function to render scales (clear first to avoid duplicates)
-    function renderScales(screenId, prefix="1") {
-      ["valence","arousal","dominance"].forEach(scale => {
-        const container = document.getElementById(scale + prefix);
-        container.innerHTML = ""; // clear previous images
-        for (let i=1; i<=SAM_OPTIONS; i++) {
-          let img = document.createElement("img");
-          img.src = "images/" + scale + "_" + i + ".png";
-          img.dataset.value = i;
-          img.dataset.scale = scale;
-          img.onclick = () => selectOption(prefix, scale, img);
+        for (let value = 1; value <= SAM_OPTIONS; value++) {
+          const img = document.createElement("img");
+          img.src = `images/${dimension}_${value}.png`;
+          img.dataset.value = String(value);
+          img.dataset.scale = dimension;
+          img.alt = `${dimension} ${value}`;
+          img.draggable = false;
+          img.addEventListener("click", () => selectOption(prefix, dimension, img));
           container.appendChild(img);
         }
       });
     }
 
-    function selectOption(prefix, scale, img) {
+    function restoreUI() {
+      ["scale1", "scale2"].forEach((scaleName, index) => {
+        const scale = responses[scaleName];
+        if (!scale) return;
+
+        DIMENSIONS.forEach(dimension => {
+          const value = scale[dimension];
+          if (!value) return;
+
+          const img = document.querySelector(
+            `#sam-screen${index + 1} img[data-scale="${dimension}"][data-value="${value}"]`
+          );
+
+          if (img) {
+            img.classList.add("selected");
+          }
+        });
+      });
+    }
+
+    function saveResponses() {
+      localStorage.setItem(STORAGE.responses, JSON.stringify(responses));
+    }
+
+    function safeLoadResponses() {
+      const saved = localStorage.getItem(STORAGE.responses);
+      if (!saved) {
+        return emptyResponses(scenario);
+      }
+
+      try {
+        const parsed = JSON.parse(saved);
+        const result = emptyResponses(scenario);
+
+        if (parsed.scale1 && typeof parsed.scale1 === "object") {
+          result.scale1 = parsed.scale1;
+        }
+
+        if (result.scale2 && parsed.scale2 && typeof parsed.scale2 === "object") {
+          result.scale2 = parsed.scale2;
+        }
+
+        return result;
+      } catch (error) {
+        console.warn("Could not restore saved SAM responses. Starting with empty responses.", error);
+        return emptyResponses(scenario);
+      }
+    }
+
+    function getTargetScreen(startTime) {
+      const config = getScenarioConfig();
+      const elapsed = Math.max(0, (Date.now() - startTime) / 1000);
+      const firstComplete = isScaleComplete("scale1");
+
+      if (config.type === "baseline") {
+        if (elapsed < config.firstScaleTime) {
+          return "waiting-screen";
+        }
+
+        if (!firstComplete) {
+          return "sam-screen1";
+        }
+
+        if (elapsed < config.endTime) {
+          return "idle-screen";
+        }
+
+        return "end_screen";
+      }
+
+      // Riding scenarios
+      if (elapsed < config.firstScaleTime) {
+        return "waiting-screen";
+      }
+
+      if (!firstComplete) {
+        return "sam-screen1";
+      }
+
+      if (elapsed < config.secondScaleTime) {
+        return "idle-screen";
+      }
+
+      if (!isScaleComplete("scale2")) {
+        return "sam-screen2";
+      }
+
+      return "end_screen";
+    }
+
+    function refreshScenarioView({ notifyForScale = false, notifyForEnd = false } = {}) {
+      const startTime = Number(localStorage.getItem(STORAGE.startTime));
+
+      if (!Number.isFinite(startTime) || startTime <= 0) {
+        clearTimers();
+        showScreen("launch-screen");
+        return;
+      }
+
+      const targetScreen = getTargetScreen(startTime);
+      const changed = showScreen(targetScreen);
+
+      if (changed && notifyForScale && (targetScreen === "sam-screen1" || targetScreen === "sam-screen2")) {
+        playNotify();
+      }
+
+      if (changed && notifyForEnd && targetScreen === "end_screen") {
+        playNotify();
+      }
+
+      scheduleEvents(startTime);
+    }
+
+    function scheduleEvents(startTime) {
+      clearTimers();
+      const config = getScenarioConfig();
+
+      scheduleAt(startTime, config.firstScaleTime, () => {
+        refreshScenarioView({ notifyForScale: true });
+      });
+
+      if (config.type === "baseline") {
+        scheduleAt(startTime, config.endTime, () => {
+          refreshScenarioView({ notifyForEnd: true });
+        });
+      } else {
+        scheduleAt(startTime, config.secondScaleTime, () => {
+          refreshScenarioView({ notifyForScale: true });
+        });
+      }
+    }
+
+    function startScenario() {
+      clearTimers();
+      primeAudio();
+
+      // A fresh press of Start always starts a clean run.
+      responses = emptyResponses(scenario);
+      saveResponses();
+
+      downloadResults = false;
+      localStorage.setItem(STORAGE.downloaded, "false");
+
+      const startTime = Date.now();
+      localStorage.setItem(STORAGE.startTime, String(startTime));
+
+      renderScales("1");
+      renderScales("2");
+      showScreen("waiting-screen");
+      scheduleEvents(startTime);
+    }
+
+    function selectOption(prefix, dimension, img) {
       const siblings = img.parentNode.querySelectorAll("img");
-      siblings.forEach(sib => sib.classList.remove("selected"));
+      siblings.forEach(sibling => sibling.classList.remove("selected"));
       img.classList.add("selected");
 
-      if (scenario == 0 && prefix === "1") {
-        responses0.scale1[scale] = img.dataset.value;
-        localStorage.setItem("responses", JSON.stringify(responses0));
-        if (
-            responses0.scale1.valence && 
-            responses0.scale1.arousal && 
-            responses0.scale1.dominance) {
-          firstScaleAnswered = true;
-          responses0.scale1.completedAt = new Date().toISOString();
-          localStorage.setItem("responses", JSON.stringify(responses0));
-          showScreen("idle-screen");
-          // Schedule transition to end_screen at t2
-          const startTime = parseInt(localStorage.getItem("scenarioStart"));
-          const now = Date.now();
-          const t2 = 180 * 1000; // ms
-          const elapsed = now - startTime;
-          const remaining = t2 - elapsed;
-          if (remaining > 0) {
-            setTimeout(() => {
-              showScreen("end_screen");
-              playNotify();
-            }, remaining);
-          }      
-          else {
-            // If t2 already passed, show end_screen immediately
-            showScreen("end_screen");
-            //playNotify();
-          }
-          return;
-        }
+      // Prefix 3 is the instructions/demo scale and must not be saved.
+      if (prefix === "3") {
+        return;
       }
 
-      if (prefix === "1") {
-        responses.scale1[scale] = img.dataset.value;
-        localStorage.setItem("responses", JSON.stringify(responses));
+      const scaleName = prefix === "1" ? "scale1" : "scale2";
+      const scale = responses[scaleName];
 
-        if (
-          responses.scale1.valence &&
-          responses.scale1.arousal &&
-          responses.scale1.dominance
-        ) {
-          primeAudio() // Primes audio for second scale 
-          firstScaleAnswered = true;
-          responses.scale1.completedAt = new Date().toISOString();
-          localStorage.setItem("responses", JSON.stringify(responses));
-
-          if (secondScaleReady) {
-            showScreen("sam-screen2");
-            playNotify();
-          } else {
-            showScreen("idle-screen");
-          }
-        }
+      if (!scale) {
+        return;
       }
-      if (prefix === "2") {
-        responses.scale2[scale] = img.dataset.value;
-        localStorage.setItem("responses", JSON.stringify(responses));
 
-        if (
-          responses.scale2.valence &&
-          responses.scale2.arousal &&
-          responses.scale2.dominance
-        ) {
-          responses.scale2.completedAt = new Date().toISOString();
-          localStorage.setItem("responses", JSON.stringify(responses));
-          showScreen("end_screen");
+      const wasComplete = isScaleComplete(scaleName);
+      scale[dimension] = img.dataset.value;
+
+      const isCompleteNow = isScaleComplete(scaleName);
+      if (!wasComplete && isCompleteNow) {
+        scale.completedAt = new Date().toISOString();
+      }
+
+      saveResponses();
+
+      if (!wasComplete && isCompleteNow) {
+        const beforeRefresh = getTargetScreen(Number(localStorage.getItem(STORAGE.startTime)));
+        refreshScenarioView({ notifyForScale: true });
+
+        // Priming again after a participant interaction helps browsers that
+        // restrict later programmatic audio playback.
+        if (scaleName === "scale1" && getScenarioConfig().type === "ride" && beforeRefresh !== "sam-screen2") {
+          primeAudio();
         }
       }
     }
 
-    function saveCSV() {
-      let csv = "Scale, Timestamp, Valence, Arousal, Dominance\n";
-      if (scenario == 0) {
-        csv += `scale1, ${responses0.scale1.completedAt||""}, ${responses0.scale1.valence||""}, ${responses0.scale1.arousal||""}, ${responses0.scale1.dominance||""}\n`;
-        const blob = new Blob([csv], { type: "text/csv" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "results_" + scenario + ".csv";
-        a.click();
-        URL.revokeObjectURL(url);
-        downloadResults = true;
-        localStorage.removeItem("responses0"); // <-- clear for baseline
-        localStorage.removeItem("currentScreen");
-        localStorage.removeItem("scenarioStart");
-        return;
-      }
-      csv += `scale1, ${responses.scale1.completedAt||""}, ${responses.scale1.valence||""}, ${responses.scale1.arousal||""}, ${responses.scale1.dominance||""}\n`;
-      csv += `scale2, ${responses.scale2.completedAt||""}, ${responses.scale2.valence||""}, ${responses.scale2.arousal||""}, ${responses.scale2.dominance||""}\n`;
+    function playNotify() {
+      const audio = document.getElementById("notifySound");
+      if (!audio) return;
 
-      const blob = new Blob([csv], { type: "text/csv" });
+      audio.pause();
+      audio.currentTime = 0;
+      audio.play().catch(error => {
+        console.warn("Notification sound could not be played:", error);
+      });
+    }
+
+    function primeAudio() {
+      const audio = document.getElementById("notifySound");
+      if (!audio) return;
+
+      const oldVolume = audio.volume;
+      audio.volume = 0;
+
+      audio.play()
+        .then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.volume = oldVolume;
+        })
+        .catch(error => {
+          audio.volume = oldVolume;
+          console.warn("Audio priming failed:", error);
+        });
+    }
+
+    function updateButtonLabels() {
+      const startBtn = document.getElementById("start-btn");
+      if (!startBtn) return;
+      startBtn.textContent = `Start ${getScenarioConfig().label}`;
+    }
+
+    function csvEscape(value) {
+      const text = String(value ?? "");
+      if (/[",\n]/.test(text)) {
+        return `"${text.replace(/"/g, '""')}"`;
+      }
+      return text;
+    }
+
+    function responseToCsvRow(scaleName) {
+      const scale = responses[scaleName] || {};
+      return [
+        scaleName,
+        scale.completedAt || "",
+        scale.valence || "",
+        scale.arousal || "",
+        scale.dominance || ""
+      ].map(csvEscape).join(",");
+    }
+
+    function saveCSV() {
+      const config = getScenarioConfig();
+      const rows = ["Scale,Timestamp,Valence,Arousal,Dominance"];
+
+      rows.push(responseToCsvRow("scale1"));
+      if (config.type === "ride") {
+        rows.push(responseToCsvRow("scale2"));
+      }
+
+      const csv = rows.join("\n") + "\n";
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "results_" + scenario + ".csv";
-      a.click();
-      URL.revokeObjectURL(url);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = `results_${scenario}.csv`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      // Delay revocation slightly for better browser compatibility.
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+
       downloadResults = true;
+      localStorage.setItem(STORAGE.downloaded, "true");
     }
 
     function restartScenario() {
@@ -438,23 +522,59 @@
         alert("Please download the results before restarting.");
         return;
       }
-      else {
-        downloadResults = false; // reset for next round
-        scenario = (scenario + 1) % 4; // cycle through baseline and scenarios 1,2,3
-        localStorage.setItem("scenario", scenario);
-        updateButtonLabels();
-      }
-      localStorage.removeItem("responses");
-      localStorage.removeItem("currentScreen");
-      localStorage.removeItem("scenarioStart");
-      responses = { scale1: {}, scale2: {} };
-      secondScaleReady = false;
-      firstScaleAnswered = false;
-      renderScales("sam-screen1","1");
-      renderScales("sam-screen2","2");
+
+      clearTimers();
+
+      // Baseline -> Scenario 1 -> Scenario 2 -> Scenario 3 -> Baseline
+      scenario = (scenario + 1) % SCENARIOS.length;
+      localStorage.setItem(STORAGE.scenario, String(scenario));
+
+      responses = emptyResponses(scenario);
+      downloadResults = false;
+
+      localStorage.removeItem(STORAGE.startTime);
+      localStorage.removeItem(STORAGE.responses);
+      localStorage.setItem(STORAGE.downloaded, "false");
+
+      renderScales("1");
+      renderScales("2");
+      updateButtonLabels();
       showScreen("launch-screen");
     }
 
+    window.addEventListener("DOMContentLoaded", () => {
+      const storedScenario = Number.parseInt(localStorage.getItem(STORAGE.scenario), 10);
+      scenario = Number.isInteger(storedScenario) && storedScenario >= 0 && storedScenario < SCENARIOS.length
+        ? storedScenario
+        : 0;
+
+      responses = safeLoadResponses();
+      downloadResults = localStorage.getItem(STORAGE.downloaded) === "true";
+
+      renderScales("1");
+      renderScales("2");
+      restoreUI();
+      updateButtonLabels();
+
+      const startTime = Number(localStorage.getItem(STORAGE.startTime));
+      if (Number.isFinite(startTime) && startTime > 0) {
+        // Derive the correct screen from absolute time and saved answers.
+        // This avoids restoring a stale screen after a refresh/restart.
+        refreshScenarioView();
+      } else {
+        showScreen("launch-screen");
+      }
+    });
+
+    // Re-evaluate the UI when the tab becomes visible again. This makes the
+    // timer robust against browser timer throttling while the page is hidden.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible" && localStorage.getItem(STORAGE.startTime)) {
+        refreshScenarioView();
+      }
+    });
+
+    window.addEventListener("beforeunload", clearTimers);
   </script>
 </body>
 </html>
