@@ -18,6 +18,9 @@
     }
 
     .scale-box {
+      display: flex;
+      align-items: center;
+      gap: 20px;
       border: 2px solid #444;
       border-radius: 12px;
       padding: 15px;
@@ -25,6 +28,31 @@
       text-align: center;
       background-color: #fafafa;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .scale-label {
+      flex: 0 0 180px;
+      text-align: left;
+    }
+
+    .scale-label strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .scale-options {
+      flex: 1;
+      min-width: 0;
+    }
+
+    @media (max-width: 600px) {
+      .scale-label {
+        flex-basis: 110px;
+      }
+
+      .scale-box {
+        gap: 10px;
+      }
     }
 
     .scale-box img {
@@ -119,6 +147,11 @@
 
     const SAM_OPTIONS = 5;
     const DIMENSIONS = ["valence", "arousal", "dominance"];
+    const DIMENSION_LABELS = {
+      valence: { title: "Valence", range: "Bad ↔ Good" },
+      arousal: { title: "Arousal", range: "Calm ↔ Aroused" },
+      dominance: { title: "Dominance", range: "Controlled ↔ In Control" }
+    };
 
     // Scenario 0 = baseline, scenarios 1-3 = riding scenarios.
     // Times are in seconds after pressing Start.
@@ -231,6 +264,18 @@
 
         container.innerHTML = "";
 
+        const label = document.createElement("div");
+        label.className = "scale-label";
+        const title = document.createElement("strong");
+        title.textContent = DIMENSION_LABELS[dimension].title;
+        label.appendChild(title);
+        label.appendChild(document.createTextNode(DIMENSION_LABELS[dimension].range));
+        container.appendChild(label);
+
+        const options = document.createElement("div");
+        options.className = "scale-options";
+        container.appendChild(options);
+
         for (let value = 1; value <= SAM_OPTIONS; value++) {
           const img = document.createElement("img");
           img.src = `images/${dimension}_${value}.png`;
@@ -239,7 +284,7 @@
           img.alt = `${dimension} ${value}`;
           img.draggable = false;
           img.addEventListener("click", () => selectOption(prefix, dimension, img));
-          container.appendChild(img);
+          options.appendChild(img);
         }
       });
     }
